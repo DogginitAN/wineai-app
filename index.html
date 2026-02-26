@@ -428,6 +428,125 @@ main {
 
 .card-notes.open { display: block; }
 
+/* ── Find Similar button ── */
+.btn-similar {
+  font-family: var(--sans);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--cream-muted);
+  background: none;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 1rem;
+}
+
+.btn-similar:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+/* ── Similar-mode header ── */
+.similar-header {
+  margin-bottom: 1.5rem;
+}
+
+.similar-label {
+  font-family: var(--sans);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--gold-dim);
+  margin-bottom: 0.5rem;
+}
+
+.similar-ref-name {
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  font-weight: 400;
+  color: var(--cream);
+  margin-bottom: 0.25rem;
+}
+
+.similar-ref-meta {
+  font-size: 0.72rem;
+  color: var(--cream-dim);
+  font-weight: 300;
+  margin-bottom: 1rem;
+}
+
+.similar-clear {
+  font-family: var(--sans);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--cream-muted);
+  background: none;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 0.75rem;
+}
+
+.similar-clear:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+/* ── Vector bar chart ── */
+.vector-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 320px;
+  margin-top: 0.75rem;
+}
+
+.vector-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.vector-label {
+  font-family: var(--sans);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--cream-muted);
+  width: 52px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.vector-track {
+  flex: 1;
+  height: 4px;
+  background: var(--border-light);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.vector-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--gold);
+  transition: width 0.4s ease;
+}
+
+.vector-val {
+  font-family: var(--sans);
+  font-size: 0.5rem;
+  color: var(--cream-muted);
+  width: 22px;
+  flex-shrink: 0;
+}
+
 /* ── Empty state ── */
 .empty-state {
   text-align: center;
@@ -658,8 +777,10 @@ const placeholders = [
   'fruity Italian red',
   'easy-drinking pinot noir',
   'dry ros\u00e9, refreshing',
+  'something like Barefoot Moscato but drier',
   'spicy shiraz from Australia',
   'buttery chardonnay',
+  'I liked the Kim Crawford',
   'sweet moscato under $15',
   'full-bodied malbec',
 ];
@@ -691,6 +812,7 @@ searchInput.addEventListener('keydown', (e) => {
 clearBtn.addEventListener('click', () => {
   searchInput.value = '';
   clearBtn.classList.remove('visible');
+  similarMode = null;
   runSearch();
   searchInput.focus();
 });
@@ -724,7 +846,7 @@ sortBtn.addEventListener('click', () => {
   const idx = sortModes.indexOf(sortMode);
   sortMode = sortModes[(idx + 1) % sortModes.length];
   sortBtn.textContent = sortLabels[sortMode];
-  renderResults(currentResults, currentTarget);
+  renderResults(currentResults, currentTarget, similarMode);
 });
 
 document.addEventListener('click', (e) => {
@@ -735,6 +857,163 @@ document.addEventListener('click', (e) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 });
+
+// ── Similar wine state ──
+let similarMode = null; // null or { wine, vector, name }
+
+// ── Find similar via button ──
+function findSimilar(wineName) {
+  const key = normalizeKey(wineName);
+  const match = uniqueWines.find(w => normalizeKey(w.name) === key);
+  if (!match || !match.vector) return;
+  similarMode = { wine: match, vector: [...match.vector], name: match.name };
+  searchInput.value = '';
+  clearBtn.classList.remove('visible');
+  runSearch();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function clearSimilar() {
+  similarMode = null;
+  runSearch();
+}
+
+// Make findSimilar available to onclick handlers
+window._findSimilar = findSimilar;
+window._clearSimilar = clearSimilar;
+
+// ── Natural language "similar to" detection ──
+const SIMILAR_PATTERNS = [
+  /something like (.+?)(?:\s+but\s+(.+))?$/i,
+  /similar to (?:the )?(.+?)(?:\s+but\s+(.+))?$/i,
+  /i liked (?:the )?(.+?)(?:\s+but\s+(.+))?$/i,
+  /more like (?:the )?(.+?)(?:\s+but\s+(.+))?$/i,
+  /another (.+?)(?:\s+but\s+(.+))?$/i,
+  /wines? like (.+?)(?:\s+but\s+(.+))?$/i,
+];
+
+// Modifier keywords that adjust a reference vector
+const MODIFIER_MAP = {
+  'drier':       { sweetness: -0.25, acidity: 0.10 },
+  'sweeter':     { sweetness: 0.25 },
+  'lighter':     { body: -0.20, tannin: -0.15 },
+  'heavier':     { body: 0.20, tannin: 0.15 },
+  'bolder':      { body: 0.20, tannin: 0.20 },
+  'smoother':    { tannin: -0.20, acidity: -0.10 },
+  'more fruit':  { fruit: 0.20 },
+  'less fruit':  { fruit: -0.20 },
+  'fruitier':    { fruit: 0.20 },
+  'more oaky':   { oak: 0.20 },
+  'less oaky':   { oak: -0.20 },
+  'oakier':      { oak: 0.20 },
+  'more spicy':  { spice: 0.20 },
+  'less spicy':  { spice: -0.20 },
+  'spicier':     { spice: 0.20 },
+  'more tannic':  { tannin: 0.20 },
+  'less tannic':  { tannin: -0.20 },
+  'crisper':     { acidity: 0.20 },
+  'more acidic': { acidity: 0.20 },
+  'less acidic': { acidity: -0.20 },
+};
+
+function fuzzyMatchWineName(query) {
+  // Normalize and try to find best match
+  const q = query.toLowerCase().trim();
+  const qTokens = q.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+  if (qTokens.length === 0) return null;
+
+  let bestScore = 0;
+  let bestWine = null;
+
+  for (const w of uniqueWines) {
+    const name = (w.name || '').toLowerCase();
+    // Exact substring
+    if (name.includes(q)) return w;
+    // Token overlap
+    const nTokens = name.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+    const overlap = qTokens.filter(t => nTokens.some(n => n.includes(t) || t.includes(n))).length;
+    const score = overlap / Math.max(qTokens.length, 1);
+    // Also check brand
+    const brand = (w.brand || '').toLowerCase();
+    const brandBoost = brand && q.includes(brand) ? 0.3 : 0;
+    const total = score + brandBoost;
+    if (total > bestScore) {
+      bestScore = total;
+      bestWine = w;
+    }
+  }
+
+  return bestScore >= 0.5 ? bestWine : null;
+}
+
+function applyModifiers(vector, modifierText) {
+  if (!modifierText) return vector;
+  const v = [...vector];
+  const lower = modifierText.toLowerCase();
+  const dimIdx = { tannin: 0, acidity: 1, sweetness: 2, body: 3, fruit: 4, oak: 5, spice: 6 };
+  for (const [phrase, adjustments] of Object.entries(MODIFIER_MAP)) {
+    if (lower.includes(phrase)) {
+      for (const [dim, delta] of Object.entries(adjustments)) {
+        v[dimIdx[dim]] = Math.max(0, Math.min(1, v[dimIdx[dim]] + delta));
+      }
+    }
+  }
+  return v;
+}
+
+function detectSimilarQuery(query) {
+  for (const re of SIMILAR_PATTERNS) {
+    const m = query.match(re);
+    if (m) {
+      const wineName = m[1].trim();
+      const modifiers = m[2] ? m[2].trim() : null;
+      const wine = fuzzyMatchWineName(wineName);
+      if (wine && wine.vector) {
+        const vec = applyModifiers([...wine.vector], modifiers);
+        return { wine, vector: vec, name: wine.name, modifiers };
+      }
+    }
+  }
+  return null;
+}
+
+// ── Similar-mode match reason (describes shared profile, not the reference) ──
+function similarReason(refVec, wineVec) {
+  const labels = ['tannin', 'acidity', 'sweetness', 'body', 'fruit', 'oak', 'spice'];
+  const descriptors = {
+    tannin:    { high: 'bold tannins', low: 'soft tannins', mid: 'moderate tannins' },
+    acidity:   { high: 'bright acidity', low: 'mellow', mid: 'balanced acidity' },
+    sweetness: { high: 'sweet', low: 'dry', mid: 'off-dry' },
+    body:      { high: 'full-bodied', low: 'light-bodied', mid: 'medium-bodied' },
+    fruit:     { high: 'fruit-forward', low: 'earthy', mid: 'moderate fruit' },
+    oak:       { high: 'oaky', low: 'unoaked', mid: 'lightly oaked' },
+    spice:     { high: 'spicy', low: 'mild', mid: 'hint of spice' },
+  };
+
+  // Find dimensions where BOTH wines agree (both high, both low, etc.)
+  const shared = [];
+  for (let i = 0; i < 7; i++) {
+    const rv = refVec[i] || 0.5;
+    const wv = wineVec[i] || 0.5;
+    const diff = Math.abs(rv - wv);
+    if (diff < 0.2) {
+      const avg = (rv + wv) / 2;
+      const level = avg >= 0.65 ? 'high' : avg <= 0.3 ? 'low' : 'mid';
+      shared.push({ dim: labels[i], desc: descriptors[labels[i]][level], diff, avg });
+    }
+  }
+
+  shared.sort((a, b) => {
+    // Prefer extreme (more interesting) shared traits
+    const aExtreme = Math.abs(a.avg - 0.5);
+    const bExtreme = Math.abs(b.avg - 0.5);
+    return bExtreme - aExtreme;
+  });
+
+  const top = shared.slice(0, 3).map(s => s.desc);
+  const unique = [...new Set(top)];
+  return unique.length > 0 ? 'Similar profile \u2014 ' + unique.join(', ') : 'Similar overall profile';
+}
 
 // ── Search logic ──
 function runSearch() {
@@ -748,11 +1027,44 @@ function runSearch() {
     else if (type === 'price') { const max = parseFloat(val); pool = pool.filter(w => w.price && w.price <= max); }
   }
 
+  // Check for similar-wine mode (button-triggered)
+  if (similarMode) {
+    currentTarget = similarMode.vector;
+    const refKey = normalizeKey(similarMode.name);
+    currentResults = pool
+      .filter(w => normalizeKey(w.name) !== refKey)
+      .map(w => {
+        const vec = w.vector || [0.5,0.5,0.5,0.5,0.5,0.5,0.5];
+        const sim = similarity(similarMode.vector, vec);
+        return { ...w, score: sim, matchPct: Math.round(sim * 100), reason: similarReason(similarMode.vector, vec) };
+      });
+    currentResults.sort((a, b) => b.score - a.score);
+    renderResults(currentResults, similarMode.vector, similarMode);
+    return;
+  }
+
   if (!query) {
     currentTarget = null;
     currentResults = pool.map(w => ({ ...w, score: defaultScore(w), matchPct: null, reason: '' }));
     currentResults.sort((a, b) => b.score - a.score);
-    renderResults(currentResults, null);
+    renderResults(currentResults, null, null);
+    return;
+  }
+
+  // Check for "similar to" natural language
+  const similarDetected = detectSimilarQuery(query);
+  if (similarDetected) {
+    const refKey = normalizeKey(similarDetected.name);
+    currentTarget = similarDetected.vector;
+    currentResults = pool
+      .filter(w => normalizeKey(w.name) !== refKey)
+      .map(w => {
+        const vec = w.vector || [0.5,0.5,0.5,0.5,0.5,0.5,0.5];
+        const sim = similarity(similarDetected.vector, vec);
+        return { ...w, score: sim, matchPct: Math.round(sim * 100), reason: similarReason(similarDetected.vector, vec) };
+      });
+    currentResults.sort((a, b) => b.score - a.score);
+    renderResults(currentResults, similarDetected.vector, similarDetected);
     return;
   }
 
@@ -773,7 +1085,7 @@ function runSearch() {
   });
 
   currentResults.sort((a, b) => b.score - a.score);
-  renderResults(currentResults, target);
+  renderResults(currentResults, target, null);
 }
 
 function defaultScore(w) {
@@ -789,8 +1101,25 @@ function defaultScore(w) {
   return s;
 }
 
+// ── Vector bar chart HTML ──
+function renderVectorChart(vector) {
+  const dims = ['tannin', 'acidity', 'sweetness', 'body', 'fruit', 'oak', 'spice'];
+  let html = '<div class="vector-chart">';
+  for (let i = 0; i < 7; i++) {
+    const val = vector[i] || 0;
+    const pct = Math.round(val * 100);
+    html += `<div class="vector-row">
+      <span class="vector-label">${dims[i]}</span>
+      <div class="vector-track"><div class="vector-fill" style="width:${pct}%"></div></div>
+      <span class="vector-val">${val.toFixed(2)}</span>
+    </div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
 // ── Render ──
-function renderResults(results, target) {
+function renderResults(results, target, similarRef) {
   const container = document.getElementById('results');
   const countEl = document.getElementById('resultsCount');
 
@@ -810,7 +1139,7 @@ function renderResults(results, target) {
     return;
   }
 
-  if (results.length === 0) {
+  if (results.length === 0 && !similarRef) {
     container.innerHTML = `
       <div class="empty-state">
         <h2>What are you in the mood for?</h2>
@@ -822,8 +1151,8 @@ function renderResults(results, target) {
           <span class="example-chip">fruity pinot noir</span>
           <span class="example-chip">dry ros\u00e9</span>
           <span class="example-chip">sweet moscato</span>
-          <span class="example-chip">spicy shiraz</span>
-          <span class="example-chip">buttery chardonnay</span>
+          <span class="example-chip">something like Barefoot Moscato</span>
+          <span class="example-chip">I liked the Kim Crawford</span>
         </div>
       </div>`;
     countEl.textContent = '';
@@ -831,6 +1160,25 @@ function renderResults(results, target) {
   }
 
   let html = '';
+
+  // Similar-mode reference card
+  if (similarRef) {
+    const ref = similarRef.wine;
+    const refMeta = [];
+    if (ref.grape) refMeta.push(capitalize(ref.grape));
+    if (ref.region) refMeta.push(ref.region);
+    if (ref.country && ref.country !== ref.region) refMeta.push(ref.country);
+
+    html += `
+    <div class="similar-header">
+      <div class="similar-label">Similar to</div>
+      <div class="similar-ref-name">${esc(ref.name)}</div>
+      <div class="similar-ref-meta">${refMeta.join(' / ')}${ref.price ? ` \u2014 $${ref.price.toFixed(2)}` : ''}</div>
+      ${renderVectorChart(similarRef.vector)}
+      <button class="similar-clear" onclick="window._clearSimilar()">Clear &times;</button>
+    </div>`;
+  }
+
   for (const w of display) {
     const key = normalizeKey(w.name);
     const group = wineGroups.get(key) || [w];
@@ -854,6 +1202,9 @@ function renderResults(results, target) {
       return short + (o.price ? ` \u2014 $${o.price.toFixed(2)}` : '');
     });
 
+    // Escape wine name for onclick attribute
+    const nameForJs = wine.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
     html += `
     <div class="wine-card">
       <div class="card-top">
@@ -874,6 +1225,7 @@ function renderResults(results, target) {
         <span class="detail-item store">${shortStore(wine.storeName)} \u00B7 ${wine.storeDist} mi</span>
         ${wine.colour ? `<span class="detail-item">${wine.colour}</span>` : ''}
         ${alsoAt.map(s => `<span class="detail-item also">Also at ${esc(s)}</span>`).join('')}
+        ${wine.vector ? `<button class="btn-similar" onclick="window._findSimilar('${nameForJs}')">Find similar</button>` : ''}
       </div>
       ${showMatch && wine.reason ? `<div class="card-reason">${esc(wine.reason)}</div>` : ''}
       ${hasNotes ? `
