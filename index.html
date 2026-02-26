@@ -1046,14 +1046,8 @@ async function detectSimilarQuery(query) {
 
   const { wineName, modifiers } = parsed;
 
-  // 1. Try local inventory first (instant)
-  const localMatch = fuzzyMatchLocal(wineName);
-  if (localMatch && localMatch.vector) {
-    const vec = applyModifiers([...localMatch.vector], modifiers);
-    return { wine: localMatch, vector: vec, name: localMatch.name, modifiers };
-  }
-
-  // 2. Search full catalog (lazy-load 142K wines)
+  // 1. Search full catalog first — it's the authoritative source for
+  //    "what does this wine taste like". Local inventory is for results only.
   const catalog = await loadCatalog();
   if (catalog && catalog.length > 0) {
     const catMatch = fuzzyMatchCatalog(wineName, catalog);
@@ -1061,6 +1055,13 @@ async function detectSimilarQuery(query) {
       const vec = applyModifiers([...catMatch.vector], modifiers);
       return { wine: catMatch, vector: vec, name: catMatch.name, modifiers };
     }
+  }
+
+  // 2. Fallback to local inventory if catalog has no match
+  const localMatch = fuzzyMatchLocal(wineName);
+  if (localMatch && localMatch.vector) {
+    const vec = applyModifiers([...localMatch.vector], modifiers);
+    return { wine: localMatch, vector: vec, name: localMatch.name, modifiers };
   }
 
   return null;
