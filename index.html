@@ -997,11 +997,10 @@ function fuzzyMatchInList(query, list, getName, getBrand) {
       }
       continue;
     }
-    // Token overlap — require min 3 chars for substring containment to avoid
-    // single-letter tokens like "a" matching inside longer query tokens
+    // Token overlap — exact token matches only, plus prefix matching for tokens >= 4 chars
     const nTokens = name.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
     const overlap = qTokens.filter(t =>
-      nTokens.some(n => (n.length >= 3 && n.includes(t)) || (t.length >= 3 && t.includes(n)))
+      nTokens.some(n => n === t || (t.length >= 4 && n.startsWith(t)) || (n.length >= 4 && t.startsWith(n)))
     ).length;
     const score = overlap / Math.max(qTokens.length, 1);
     const brand = getBrand(item).toLowerCase();
