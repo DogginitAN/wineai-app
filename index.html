@@ -3,321 +3,451 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>wine.ai — Find Your Perfect Wine</title>
+<title>wine.ai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #f5f5f0;
-  --header-bg: #1a1a2e;
-  --accent: #722F37;
-  --accent-light: #8B3A42;
-  --accent-glow: rgba(114,47,55,0.15);
-  --card-bg: #ffffff;
-  --text: #1a1a1a;
-  --text-secondary: #6b6b6b;
-  --text-muted: #999;
-  --border: #e8e8e3;
-  --green: #2d6a4f;
-  --chip-bg: #f0ece4;
-  --chip-active: var(--accent);
-  --shadow: 0 1px 3px rgba(0,0,0,0.08);
-  --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
+  --bg: #0d0d0d;
+  --bg-raised: #161616;
+  --bg-card: #1a1a1a;
+  --bg-card-hover: #1f1f1f;
+  --gold: #c9a96e;
+  --gold-dim: rgba(201,169,110,0.5);
+  --gold-glow: rgba(201,169,110,0.08);
+  --cream: #f2ece0;
+  --cream-dim: rgba(242,236,224,0.55);
+  --cream-muted: rgba(242,236,224,0.3);
+  --wine: #8b2635;
+  --wine-soft: rgba(139,38,53,0.25);
+  --border: rgba(242,236,224,0.08);
+  --border-light: rgba(242,236,224,0.12);
+  --serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --radius: 2px;
 }
 
-html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+[data-theme="light"] {
+  --bg: #f4f1eb;
+  --bg-raised: #ece8e0;
+  --bg-card: #ffffff;
+  --bg-card-hover: #faf8f5;
+  --gold: #8b6914;
+  --gold-dim: rgba(139,105,20,0.45);
+  --gold-glow: rgba(139,105,20,0.06);
+  --cream: #1a1a1a;
+  --cream-dim: rgba(26,26,26,0.6);
+  --cream-muted: rgba(26,26,26,0.35);
+  --wine: #8b2635;
+  --wine-soft: rgba(139,38,53,0.12);
+  --border: rgba(26,26,26,0.08);
+  --border-light: rgba(26,26,26,0.15);
+}
+
+html { font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--sans);
   background: var(--bg);
-  color: var(--text);
+  color: var(--cream);
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
-/* ── Header ── */
+::selection { background: var(--gold); color: var(--bg); }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(201,169,110,0.2); border-radius: 2px; }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(26,26,26,0.15); }
+
+/* ── Theme toggle ── */
+.theme-toggle {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  background: none;
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--cream-muted);
+  transition: color 0.25s, border-color 0.25s;
+  z-index: 10;
+}
+
+.theme-toggle:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.theme-toggle .icon-sun,
+.theme-toggle .icon-moon { width: 15px; height: 15px; }
+
+.theme-toggle .icon-sun { display: none; }
+.theme-toggle .icon-moon { display: block; }
+
+[data-theme="light"] .theme-toggle .icon-sun { display: block; }
+[data-theme="light"] .theme-toggle .icon-moon { display: none; }
+
+[data-theme="light"] header::before {
+  background: radial-gradient(ellipse at 50% 0%, rgba(139,105,20,0.04) 0%, transparent 70%);
+}
+
+[data-theme="light"] .legs-decoration { opacity: 0.04; }
+
+/* ── Hero / Header ── */
 header {
-  background: var(--header-bg);
-  padding: 1.25rem 1rem 1rem;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  position: relative;
+  padding: 3rem 1.5rem 2rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
 }
 
-.header-inner {
-  max-width: 640px;
-  margin: 0 auto;
+header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 100%;
+  background: radial-gradient(ellipse at 50% 0%, rgba(201,169,110,0.04) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .brand {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.brand h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.02em;
-}
-
-.brand h1 span { color: var(--accent-light); }
-
-.brand .subtitle {
-  font-size: 0.75rem;
-  color: rgba(255,255,255,0.45);
-  font-weight: 400;
-}
-
-/* ── Search ── */
-.search-wrap {
+  margin-bottom: 2rem;
   position: relative;
 }
 
-.search-wrap svg {
+.brand h1 {
+  font-family: var(--serif);
+  font-size: 2.8rem;
+  font-weight: 400;
+  color: var(--cream);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.brand h1 .dot { color: var(--gold); }
+
+.tagline {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  color: var(--cream-muted);
+}
+
+.stats-line {
+  font-size: 0.65rem;
+  color: var(--cream-muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-top: 0.75rem;
+}
+
+/* ── Wine legs SVG decoration ── */
+.legs-decoration {
   position: absolute;
-  left: 0.875rem;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
-  color: var(--text-muted);
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 100%;
+  opacity: 0.03;
   pointer-events: none;
+}
+
+/* ── Search ── */
+.search-section {
+  max-width: 560px;
+  margin: 0 auto;
+  position: relative;
 }
 
 #search {
   width: 100%;
-  padding: 0.8rem 2.75rem 0.8rem 2.75rem;
-  font-size: 0.95rem;
-  border: 2px solid rgba(255,255,255,0.12);
-  border-radius: 12px;
-  background: rgba(255,255,255,0.08);
-  color: #fff;
+  padding: 1rem 1.25rem;
+  padding-right: 2.5rem;
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--cream);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-light);
   outline: none;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.3s;
+  letter-spacing: 0.01em;
 }
 
-#search::placeholder { color: rgba(255,255,255,0.35); }
+#search::placeholder {
+  color: var(--cream-muted);
+  font-style: italic;
+}
+
 #search:focus {
-  border-color: var(--accent-light);
-  background: rgba(255,255,255,0.12);
+  border-bottom-color: var(--gold);
 }
 
 .search-clear {
   position: absolute;
-  right: 0.75rem;
+  right: 0;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: rgba(255,255,255,0.4);
-  font-size: 1.1rem;
+  color: var(--cream-muted);
+  font-size: 1.2rem;
   cursor: pointer;
-  display: none;
-  padding: 0.25rem;
+  padding: 0.5rem;
   line-height: 1;
+  display: none;
+  transition: color 0.2s;
 }
 
+.search-clear:hover { color: var(--gold); }
 .search-clear.visible { display: block; }
 
 /* ── Filters ── */
+.filters-wrap {
+  border-bottom: 1px solid var(--border);
+}
+
 .filters {
   display: flex;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  gap: 0;
+  max-width: 560px;
+  margin: 0 auto;
   overflow-x: auto;
   scrollbar-width: none;
-  max-width: 672px;
-  margin: 0 auto;
 }
 .filters::-webkit-scrollbar { display: none; }
 
 .chip {
   flex-shrink: 0;
-  padding: 0.4rem 0.85rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  background: var(--chip-bg);
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
+  padding: 0.9rem 1.1rem;
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--cream-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: all 0.15s;
-  user-select: none;
+  transition: all 0.25s;
+  white-space: nowrap;
 }
 
-.chip:hover { background: #e8e4dc; }
+.chip:hover {
+  color: var(--cream);
+}
+
 .chip.active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+  color: var(--gold);
+  border-bottom-color: var(--gold);
 }
 
 /* ── Main ── */
 main {
-  max-width: 640px;
+  max-width: 560px;
   margin: 0 auto;
-  padding: 0.75rem 1rem 3rem;
+  padding: 1.5rem 1.5rem 4rem;
 }
 
 .results-header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 0.75rem;
-  padding: 0 0.125rem;
+  align-items: center;
+  margin-bottom: 1.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .results-count {
-  font-size: 0.8rem;
-  color: var(--text-muted);
+  font-size: 0.6rem;
+  color: var(--cream-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
 }
 
 .sort-btn {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  font-family: var(--sans);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--cream-muted);
   background: none;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.25rem 0.6rem;
+  border: none;
   cursor: pointer;
+  transition: color 0.2s;
 }
+
+.sort-btn:hover { color: var(--gold); }
 
 /* ── Wine Cards ── */
 .wine-card {
-  background: var(--card-bg);
-  border-radius: 12px;
-  padding: 1rem;
-  margin-bottom: 0.625rem;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
-  transition: box-shadow 0.15s;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
 }
 
-.wine-card:hover { box-shadow: var(--shadow-lg); }
+.wine-card:first-child { padding-top: 0; }
 
 .card-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .card-info { flex: 1; min-width: 0; }
 
 .wine-name {
-  font-size: 0.95rem;
-  font-weight: 600;
-  line-height: 1.3;
-  margin-bottom: 0.25rem;
-  color: var(--text);
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--cream);
+  margin-bottom: 0.35rem;
+  letter-spacing: 0.01em;
 }
 
 .wine-meta {
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-  line-height: 1.4;
+  font-size: 0.72rem;
+  color: var(--cream-dim);
+  line-height: 1.5;
+  font-weight: 300;
+  letter-spacing: 0.02em;
 }
 
 .wine-meta span { white-space: nowrap; }
-.meta-sep { margin: 0 0.3rem; opacity: 0.4; }
+.meta-sep { margin: 0 0.4rem; opacity: 0.3; color: var(--gold); }
 
+/* ── Match score ── */
 .match-badge {
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: var(--accent-glow);
-  border: 2px solid var(--accent);
+  text-align: right;
 }
 
 .match-pct {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--accent);
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  font-weight: 400;
+  color: var(--gold);
   line-height: 1;
 }
 
 .match-label {
-  font-size: 0.55rem;
-  color: var(--accent-light);
+  font-family: var(--sans);
+  font-size: 0.5rem;
+  color: var(--gold-dim);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.15em;
 }
 
-.card-tags {
+/* ── Tags ── */
+.card-details {
   display: flex;
-  gap: 0.375rem;
+  align-items: baseline;
+  gap: 1.25rem;
+  margin-top: 0.75rem;
   flex-wrap: wrap;
-  margin-top: 0.5rem;
 }
 
-.tag {
+.detail-item {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--cream-muted);
+  font-weight: 400;
+}
+
+.detail-item.price {
+  color: var(--gold);
+  font-weight: 500;
   font-size: 0.7rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  background: var(--chip-bg);
-  color: var(--text-secondary);
+  letter-spacing: 0.05em;
 }
 
-.tag.price {
-  background: #e8f5e9;
-  color: var(--green);
-  font-weight: 600;
-}
+.detail-item.store { color: var(--cream-dim); }
 
-.tag.store { background: #e8eaf6; color: #3949ab; }
-.tag.also { background: transparent; color: var(--text-muted); font-style: italic; }
-
-.card-reason {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  margin-top: 0.5rem;
+.detail-item.also {
   font-style: italic;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: var(--cream-muted);
+  font-size: 0.65rem;
 }
+
+/* ── Reason / Notes ── */
+.card-reason {
+  font-family: var(--serif);
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--cream-dim);
+  margin-top: 0.65rem;
+  font-weight: 400;
+}
+
+.notes-toggle {
+  font-family: var(--sans);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--gold-dim);
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-top: 0.65rem;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.notes-toggle:hover { color: var(--gold); }
 
 .card-notes {
   font-size: 0.78rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
+  color: var(--cream-dim);
+  line-height: 1.7;
   margin-top: 0.5rem;
   display: none;
+  font-weight: 300;
+  max-width: 480px;
 }
 
 .card-notes.open { display: block; }
 
-.notes-toggle {
-  font-size: 0.72rem;
-  color: var(--accent);
-  background: none;
-  border: none;
-  cursor: pointer;
-  margin-top: 0.35rem;
-  padding: 0;
-  font-weight: 500;
-}
-
-/* ── Empty / Loading states ── */
+/* ── Empty state ── */
 .empty-state {
   text-align: center;
-  padding: 3rem 1rem;
-  color: var(--text-muted);
+  padding: 4rem 1rem;
 }
 
 .empty-state h2 {
-  font-size: 1.1rem;
-  color: var(--text-secondary);
+  font-family: var(--serif);
+  font-size: 1.4rem;
+  font-weight: 400;
+  color: var(--cream);
   margin-bottom: 0.5rem;
+  font-style: italic;
 }
 
 .empty-state p {
-  font-size: 0.85rem;
-  line-height: 1.6;
+  font-size: 0.75rem;
+  color: var(--cream-muted);
+  font-weight: 300;
+  letter-spacing: 0.03em;
 }
 
 .example-queries {
@@ -325,94 +455,154 @@ main {
   flex-wrap: wrap;
   gap: 0.5rem;
   justify-content: center;
-  margin-top: 1.25rem;
+  margin-top: 2rem;
 }
 
 .example-chip {
-  padding: 0.4rem 0.75rem;
-  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  font-family: var(--serif);
   font-size: 0.78rem;
-  background: var(--chip-bg);
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
+  font-style: italic;
+  color: var(--cream-muted);
+  background: transparent;
+  border: 1px solid var(--border-light);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.25s;
+  border-radius: var(--radius);
 }
 
 .example-chip:hover {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+  color: var(--gold);
+  border-color: var(--gold);
 }
 
-/* ── Placeholder cycling ── */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+/* ── Footer ── */
+footer {
+  text-align: center;
+  padding: 2rem 1rem 3rem;
+  border-top: 1px solid var(--border);
+}
+
+.footer-mark {
+  font-family: var(--serif);
+  font-size: 0.85rem;
+  color: var(--cream-muted);
+  letter-spacing: 0.04em;
+}
+
+.footer-mark .dot { color: var(--gold-dim); }
+
+.footer-sub {
+  font-size: 0.55rem;
+  color: rgba(242,236,224,0.15);
+  margin-top: 0.5rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
 }
 
 /* ── Responsive ── */
 @media (min-width: 640px) {
-  header { padding: 1.5rem 1.5rem 1.25rem; }
-  main { padding: 1rem 1.5rem 3rem; }
-  .wine-card { padding: 1.25rem; }
+  header { padding: 4rem 2rem 2.5rem; }
+  .brand h1 { font-size: 3.6rem; }
+  main { padding: 2rem 2rem 5rem; }
+  .wine-card { padding: 1.75rem 0; }
+  .wine-name { font-size: 1.25rem; }
 }
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #d0d0c8; border-radius: 3px; }
+@media (max-width: 400px) {
+  header { padding: 2rem 1rem 1.5rem; }
+  .brand h1 { font-size: 2.2rem; }
+  #search { font-size: 0.9rem; padding: 0.85rem 1rem; }
+  .chip { padding: 0.75rem 0.85rem; font-size: 0.6rem; }
+  .wine-name { font-size: 1rem; }
+}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="header-inner">
-    <div class="brand">
-      <h1>wine<span>.ai</span></h1>
-      <span class="subtitle" id="subtitle">371 wines &middot; 3 stores nearby</span>
-    </div>
-    <div class="search-wrap">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-      <input type="text" id="search" placeholder="smooth red, berry notes, not too dry" autocomplete="off" />
-      <button class="search-clear" id="clearBtn">&times;</button>
-    </div>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark mode">
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </svg>
+  </button>
+
+  <svg class="legs-decoration" viewBox="0 0 200 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M60 0 C60 50, 30 100, 45 200 S70 280, 55 300" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.5"/>
+    <path d="M100 0 C100 60, 80 120, 95 210 S115 270, 105 300" stroke="currentColor" stroke-width="1" fill="none" opacity="0.3"/>
+    <path d="M140 0 C140 40, 160 110, 145 190 S130 260, 150 300" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.5"/>
+  </svg>
+
+  <div class="brand">
+    <h1>wine<span class="dot">.</span>ai</h1>
+    <div class="tagline">Taste Intelligence</div>
   </div>
+
+  <div class="search-section">
+    <input type="text" id="search" placeholder="smooth red, berry notes, not too dry" autocomplete="off" spellcheck="false" />
+    <button class="search-clear" id="clearBtn">&times;</button>
+  </div>
+
+  <div class="stats-line" id="subtitle">371 wines &middot; 3 stores</div>
 </header>
 
-<div class="filters" id="filters">
-  <button class="chip" data-filter="colour:Red">Red</button>
-  <button class="chip" data-filter="colour:White">White</button>
-  <button class="chip" data-filter="colour:Rose">Rose</button>
-  <button class="chip" data-filter="subtype:sparkling">Sparkling</button>
-  <button class="chip" data-filter="price:15">Under $15</button>
-  <button class="chip" data-filter="price:25">Under $25</button>
-  <button class="chip" data-filter="price:50">Under $50</button>
+<div class="filters-wrap">
+  <div class="filters" id="filters">
+    <button class="chip" data-filter="colour:Red">Red</button>
+    <button class="chip" data-filter="colour:White">White</button>
+    <button class="chip" data-filter="colour:Rose">Ros&eacute;</button>
+    <button class="chip" data-filter="subtype:sparkling">Sparkling</button>
+    <button class="chip" data-filter="price:15">Under $15</button>
+    <button class="chip" data-filter="price:25">Under $25</button>
+    <button class="chip" data-filter="price:50">Under $50</button>
+  </div>
 </div>
 
 <main id="main">
   <div class="results-header">
     <span class="results-count" id="resultsCount"></span>
-    <button class="sort-btn" id="sortBtn">Best match</button>
+    <button class="sort-btn" id="sortBtn">Best Match</button>
   </div>
   <div id="results"></div>
 </main>
 
+<footer>
+  <div class="footer-mark">wine<span class="dot">.</span>ai</div>
+  <div class="footer-sub">Baldwinsville, NY</div>
+</footer>
+
+<script>
+// Theme toggle — runs before module to avoid flash
+(function() {
+  const saved = localStorage.getItem('wineai-theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+})();
+</script>
 <script type="module">
 import { stores } from './data/inventory.js';
 import { parsePrompt, similarity, matchReason, distanceMiles, DIMENSIONS } from './data/lexicon.js';
 
-// ── Config ──
+// ── Theme toggle ──
+const themeToggle = document.getElementById('themeToggle');
+themeToggle.addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  if (next === 'dark') {
+    document.documentElement.removeAttribute('data-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', next);
+  }
+  localStorage.setItem('wineai-theme', next === 'dark' ? '' : next);
+});
+
 const USER_LAT = 43.1587;
 const USER_LNG = -76.3327;
 
-// ── Preprocess data ──
-// Build a unified wine list with store info attached
+// ── Preprocess ──
 const allWines = [];
-const wineByKey = new Map(); // key = normalized name → cheapest entry
-
 for (const store of stores) {
   const dist = distanceMiles(USER_LAT, USER_LNG, store.lat, store.lng);
   for (const wine of store.wines) {
@@ -426,7 +616,6 @@ for (const store of stores) {
   }
 }
 
-// Group same wine across stores (by normalized name)
 function normalizeKey(name) {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -434,18 +623,14 @@ function normalizeKey(name) {
 const wineGroups = new Map();
 for (const w of allWines) {
   const key = normalizeKey(w.name);
-  if (!wineGroups.has(key)) {
-    wineGroups.set(key, []);
-  }
+  if (!wineGroups.has(key)) wineGroups.set(key, []);
   wineGroups.get(key).push(w);
 }
 
-// For each group, sort by price (cheapest first)
-for (const [key, group] of wineGroups) {
+for (const [, group] of wineGroups) {
   group.sort((a, b) => (a.price || 999) - (b.price || 999));
 }
 
-// Deduplicated list: one entry per unique wine, cheapest first
 const uniqueWines = [];
 const seen = new Set();
 for (const w of allWines) {
@@ -456,16 +641,12 @@ for (const w of allWines) {
   }
 }
 
-// Total count
-const totalWines = uniqueWines.length;
-const totalAll = allWines.length;
-
 document.getElementById('subtitle').textContent =
-  `${totalAll} wines \u00B7 ${stores.length} stores nearby`;
+  `${allWines.length} wines \u00B7 ${stores.length} stores`;
 
 // ── State ──
 let activeFilters = new Set();
-let sortMode = 'match'; // 'match' | 'price' | 'name'
+let sortMode = 'match';
 let currentResults = [];
 let currentTarget = null;
 
@@ -476,7 +657,7 @@ const placeholders = [
   'bold cabernet under $30',
   'fruity Italian red',
   'easy-drinking pinot noir',
-  'dry rosé, refreshing',
+  'dry ros\u00e9, refreshing',
   'spicy shiraz from Australia',
   'buttery chardonnay',
   'sweet moscato under $15',
@@ -492,9 +673,9 @@ setInterval(() => {
     phIdx = (phIdx + 1) % placeholders.length;
     searchInput.placeholder = placeholders[phIdx];
   }
-}, 3000);
+}, 3500);
 
-// ── Search + Filters ──
+// ── Event listeners ──
 let debounceTimer = null;
 
 searchInput.addEventListener('input', () => {
@@ -504,10 +685,7 @@ searchInput.addEventListener('input', () => {
 });
 
 searchInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    clearTimeout(debounceTimer);
-    runSearch();
-  }
+  if (e.key === 'Enter') { clearTimeout(debounceTimer); runSearch(); }
 });
 
 clearBtn.addEventListener('click', () => {
@@ -517,7 +695,6 @@ clearBtn.addEventListener('click', () => {
   searchInput.focus();
 });
 
-// Filter chips
 document.getElementById('filters').addEventListener('click', (e) => {
   const chip = e.target.closest('.chip');
   if (!chip) return;
@@ -526,7 +703,6 @@ document.getElementById('filters').addEventListener('click', (e) => {
     activeFilters.delete(f);
     chip.classList.remove('active');
   } else {
-    // Deactivate same-type filters
     const type = f.split(':')[0];
     for (const af of [...activeFilters]) {
       if (af.startsWith(type + ':')) {
@@ -540,10 +716,9 @@ document.getElementById('filters').addEventListener('click', (e) => {
   runSearch();
 });
 
-// Sort button
 const sortBtn = document.getElementById('sortBtn');
 const sortModes = ['match', 'price', 'name'];
-const sortLabels = { match: 'Best match', price: 'Price: low', name: 'A to Z' };
+const sortLabels = { match: 'Best Match', price: 'Price: Low', name: 'A \u2013 Z' };
 
 sortBtn.addEventListener('click', () => {
   const idx = sortModes.indexOf(sortMode);
@@ -552,7 +727,6 @@ sortBtn.addEventListener('click', () => {
   renderResults(currentResults, currentTarget);
 });
 
-// ── Example chips ──
 document.addEventListener('click', (e) => {
   if (e.target.classList.contains('example-chip')) {
     searchInput.value = e.target.textContent;
@@ -562,70 +736,40 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ── Main search logic ──
+// ── Search logic ──
 function runSearch() {
   const query = searchInput.value.trim();
-
-  // Apply filters
   let pool = uniqueWines;
 
   for (const f of activeFilters) {
     const [type, val] = f.split(':');
-    if (type === 'colour') {
-      pool = pool.filter(w => (w.colour || '').toLowerCase() === val.toLowerCase());
-    } else if (type === 'subtype') {
-      pool = pool.filter(w => (w.subtype || '').toLowerCase() === val.toLowerCase());
-    } else if (type === 'price') {
-      const max = parseFloat(val);
-      pool = pool.filter(w => w.price && w.price <= max);
-    }
+    if (type === 'colour') pool = pool.filter(w => (w.colour || '').toLowerCase() === val.toLowerCase());
+    else if (type === 'subtype') pool = pool.filter(w => (w.subtype || '').toLowerCase() === val.toLowerCase());
+    else if (type === 'price') { const max = parseFloat(val); pool = pool.filter(w => w.price && w.price <= max); }
   }
 
   if (!query) {
-    // No search — show popular/rated wines or all
     currentTarget = null;
-    currentResults = pool.map(w => ({
-      ...w,
-      score: defaultScore(w),
-      matchPct: null,
-      reason: '',
-    }));
+    currentResults = pool.map(w => ({ ...w, score: defaultScore(w), matchPct: null, reason: '' }));
     currentResults.sort((a, b) => b.score - a.score);
     renderResults(currentResults, null);
     return;
   }
 
-  // Parse prompt
   const { target, filters } = parsePrompt(query);
   currentTarget = target;
 
-  // Apply parsed filters
-  if (filters.colour) {
-    pool = pool.filter(w => (w.colour || '').toLowerCase() === filters.colour.toLowerCase());
-  }
-  if (filters.grape) {
-    pool = pool.filter(w => (w.grape || '').toLowerCase().includes(filters.grape));
-  }
-  if (filters.country) {
-    pool = pool.filter(w => (w.country || '').toLowerCase().includes(filters.country.toLowerCase()));
-  }
-  if (filters.region) {
-    pool = pool.filter(w => (w.region || '').toLowerCase().includes(filters.region.toLowerCase()));
-  }
-  if (filters.priceMax) {
-    pool = pool.filter(w => !w.price || w.price <= filters.priceMax);
-  }
-  if (filters.priceMin) {
-    pool = pool.filter(w => !w.price || w.price >= filters.priceMin);
-  }
+  if (filters.colour) pool = pool.filter(w => (w.colour || '').toLowerCase() === filters.colour.toLowerCase());
+  if (filters.grape) pool = pool.filter(w => (w.grape || '').toLowerCase().includes(filters.grape));
+  if (filters.country) pool = pool.filter(w => (w.country || '').toLowerCase().includes(filters.country.toLowerCase()));
+  if (filters.region) pool = pool.filter(w => (w.region || '').toLowerCase().includes(filters.region.toLowerCase()));
+  if (filters.priceMax) pool = pool.filter(w => !w.price || w.price <= filters.priceMax);
+  if (filters.priceMin) pool = pool.filter(w => !w.price || w.price >= filters.priceMin);
 
-  // Score each wine
   currentResults = pool.map(w => {
     const vec = w.vector || [0.5,0.5,0.5,0.5,0.5,0.5,0.5];
     const sim = similarity(target, vec);
-    const pct = Math.round(sim * 100);
-    const reason = matchReason(target, vec);
-    return { ...w, score: sim, matchPct: pct, reason };
+    return { ...w, score: sim, matchPct: Math.round(sim * 100), reason: matchReason(target, vec) };
   });
 
   currentResults.sort((a, b) => b.score - a.score);
@@ -633,20 +777,16 @@ function runSearch() {
 }
 
 function defaultScore(w) {
-  let score = 0;
-  // Prefer wines with ratings
-  if (w.rating && w.rating > 0) score += w.rating * 0.1;
-  if (w.rating_count && w.rating_count > 0) score += Math.min(w.rating_count / 100, 0.3);
-  // Prefer matched wines
-  if (w.match_type === 'exact') score += 0.3;
-  else if (w.match_type === 'fuzzy') score += 0.2;
-  // Prefer wines with descriptions
-  if (w.description && w.description.length > 50) score += 0.1;
-  // Small random-ish spread based on name hash
-  let hash = 0;
-  for (let i = 0; i < (w.name || '').length; i++) hash = ((hash << 5) - hash + w.name.charCodeAt(i)) | 0;
-  score += (Math.abs(hash) % 100) / 1000;
-  return score;
+  let s = 0;
+  if (w.rating && w.rating > 0) s += w.rating * 0.1;
+  if (w.rating_count && w.rating_count > 0) s += Math.min(w.rating_count / 100, 0.3);
+  if (w.match_type === 'exact') s += 0.3;
+  else if (w.match_type === 'fuzzy') s += 0.2;
+  if (w.description && w.description.length > 50) s += 0.1;
+  let h = 0;
+  for (let i = 0; i < (w.name || '').length; i++) h = ((h << 5) - h + w.name.charCodeAt(i)) | 0;
+  s += (Math.abs(h) % 100) / 1000;
+  return s;
 }
 
 // ── Render ──
@@ -654,25 +794,18 @@ function renderResults(results, target) {
   const container = document.getElementById('results');
   const countEl = document.getElementById('resultsCount');
 
-  // Sort according to mode
   let sorted = [...results];
-  if (sortMode === 'price') {
-    sorted.sort((a, b) => (a.price || 999) - (b.price || 999));
-  } else if (sortMode === 'name') {
-    sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  }
-  // For 'match', already sorted by score
+  if (sortMode === 'price') sorted.sort((a, b) => (a.price || 999) - (b.price || 999));
+  else if (sortMode === 'name') sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-  // Limit display
   const display = sorted.slice(0, 50);
-
-  countEl.textContent = `${results.length} result${results.length !== 1 ? 's' : ''}`;
+  countEl.textContent = `${results.length} wine${results.length !== 1 ? 's' : ''}`;
 
   if (results.length === 0 && searchInput.value.trim()) {
     container.innerHTML = `
       <div class="empty-state">
-        <h2>No wines match that search</h2>
-        <p>Try different terms or remove some filters</p>
+        <h2>Nothing found</h2>
+        <p>Try different terms or remove a filter</p>
       </div>`;
     return;
   }
@@ -680,14 +813,14 @@ function renderResults(results, target) {
   if (results.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
-        <h2>Describe the wine you're looking for</h2>
-        <p>Search by taste, grape, price, or style</p>
+        <h2>What are you in the mood for?</h2>
+        <p>Describe a taste, a grape, a price, a feeling</p>
         <div class="example-queries">
           <span class="example-chip">smooth red under $20</span>
           <span class="example-chip">crisp white for seafood</span>
           <span class="example-chip">bold cabernet</span>
           <span class="example-chip">fruity pinot noir</span>
-          <span class="example-chip">dry rosé</span>
+          <span class="example-chip">dry ros\u00e9</span>
           <span class="example-chip">sweet moscato</span>
           <span class="example-chip">spicy shiraz</span>
           <span class="example-chip">buttery chardonnay</span>
@@ -704,29 +837,22 @@ function renderResults(results, target) {
     const cheapest = group[0];
     const otherStores = group.filter(g => g.storeId !== cheapest.storeId);
 
-    // Use cheapest for display if this is the canonical entry
-    const wine = (w.storeId === cheapest.storeId) ? w : w;
-
-    // Grape + region line
+    const wine = w;
     const metaParts = [];
     if (wine.grape) metaParts.push(capitalize(wine.grape));
     if (wine.region) metaParts.push(wine.region);
     if (wine.country && wine.country !== wine.region) metaParts.push(wine.country);
 
-    // Description (truncate)
     let desc = wine.description || '';
-    // Filter out generic CityHive descriptions
     if (desc.startsWith('Get ') && desc.includes(' from ')) desc = '';
     const hasNotes = desc.length > 20;
 
-    // Match badge
     const showMatch = wine.matchPct !== null && wine.matchPct !== undefined;
 
-    // Also at other stores
-    const alsoAt = otherStores.map(o =>
-      `${o.storeName.replace("'s Liquors", "'s").replace(" Discount Liquors", "'s")}` +
-      (o.price ? ` $${o.price.toFixed(2)}` : '')
-    );
+    const alsoAt = otherStores.map(o => {
+      const short = o.storeName.replace("'s Liquors", "'s").replace(" Discount Liquors", "'s");
+      return short + (o.price ? ` \u2014 $${o.price.toFixed(2)}` : '');
+    });
 
     html += `
     <div class="wine-card">
@@ -734,7 +860,7 @@ function renderResults(results, target) {
         <div class="card-info">
           <div class="wine-name">${esc(wine.name)}</div>
           <div class="wine-meta">
-            ${metaParts.map(p => `<span>${esc(p)}</span>`).join('<span class="meta-sep">&middot;</span>')}
+            ${metaParts.map(p => `<span>${esc(p)}</span>`).join('<span class="meta-sep">/</span>')}
           </div>
         </div>
         ${showMatch ? `
@@ -743,16 +869,15 @@ function renderResults(results, target) {
           <span class="match-label">match</span>
         </div>` : ''}
       </div>
-      <div class="card-tags">
-        ${wine.price ? `<span class="tag price">$${wine.price.toFixed(2)}</span>` : ''}
-        <span class="tag store">${shortStore(wine.storeName)} &middot; ${wine.storeDist} mi</span>
-        ${wine.colour ? `<span class="tag">${wine.colour}</span>` : ''}
-        ${wine.subtype && wine.subtype !== wine.colour?.toLowerCase() ? `<span class="tag">${capitalize(wine.subtype)}</span>` : ''}
-        ${alsoAt.length > 0 ? alsoAt.map(s => `<span class="tag also">Also at ${esc(s)}</span>`).join('') : ''}
+      <div class="card-details">
+        ${wine.price ? `<span class="detail-item price">$${wine.price.toFixed(2)}</span>` : ''}
+        <span class="detail-item store">${shortStore(wine.storeName)} \u00B7 ${wine.storeDist} mi</span>
+        ${wine.colour ? `<span class="detail-item">${wine.colour}</span>` : ''}
+        ${alsoAt.map(s => `<span class="detail-item also">Also at ${esc(s)}</span>`).join('')}
       </div>
       ${showMatch && wine.reason ? `<div class="card-reason">${esc(wine.reason)}</div>` : ''}
       ${hasNotes ? `
-        <button class="notes-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? 'Hide tasting notes' : 'Tasting notes';">Tasting notes</button>
+        <button class="notes-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? 'Hide Notes' : 'Tasting Notes';">Tasting Notes</button>
         <div class="card-notes">${esc(desc)}</div>
       ` : ''}
     </div>`;
@@ -761,9 +886,7 @@ function renderResults(results, target) {
   container.innerHTML = html;
 }
 
-function capitalize(s) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
-}
+function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 
 function shortStore(name) {
   return name
@@ -778,7 +901,6 @@ function esc(s) {
   return d.innerHTML;
 }
 
-// ── Init ──
 runSearch();
 </script>
 
