@@ -988,19 +988,21 @@ function fuzzyMatchInList(query, list, getName, getBrand) {
 
   for (const item of list) {
     const name = getName(item).toLowerCase();
-    // Exact substring match — strong signal
+    // Exact substring match — scored in 2.0+ tier so it always beats token overlap
     if (name.includes(q)) {
-      // Prefer shorter names (more specific match)
-      const specificity = q.length / name.length;
-      if (specificity > bestScore || !bestItem) {
-        bestScore = Math.max(specificity, 0.8);
+      const specificity = 2.0 + q.length / name.length;
+      if (specificity > bestScore) {
+        bestScore = specificity;
         bestItem = item;
       }
       continue;
     }
-    // Token overlap
+    // Token overlap — require min 3 chars for substring containment to avoid
+    // single-letter tokens like "a" matching inside longer query tokens
     const nTokens = name.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-    const overlap = qTokens.filter(t => nTokens.some(n => n.includes(t) || t.includes(n))).length;
+    const overlap = qTokens.filter(t =>
+      nTokens.some(n => (n.length >= 3 && n.includes(t)) || (t.length >= 3 && t.includes(n)))
+    ).length;
     const score = overlap / Math.max(qTokens.length, 1);
     const brand = getBrand(item).toLowerCase();
     const brandBoost = brand && q.includes(brand) ? 0.3 : 0;
