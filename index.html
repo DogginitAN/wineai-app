@@ -498,6 +498,24 @@ main {
   border-color: var(--gold);
 }
 
+.catalog-loading {
+  text-align: center;
+  padding: 2rem 1rem;
+  font-family: var(--serif);
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--cream-muted);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.catalog-loading span {
+  animation: pulse 1.5s ease infinite;
+}
+
 /* ── Vector bar chart ── */
 .vector-chart {
   display: flex;
@@ -916,34 +934,84 @@ const MODIFIER_MAP = {
   'less acidic': { acidity: -0.20 },
 };
 
-function fuzzyMatchWineName(query) {
-  // Normalize and try to find best match
+// ── Catalog (lazy-loaded for "similar to" search across 142K wines) ──
+let catalogData = null;     // null = not loaded, array = loaded
+let catalogLoading = false;
+
+async function loadCatalog() {
+  if (catalogData) return catalogData;
+  if (catalogLoading) {
+    // Wait for existing load
+    while (catalogLoading) await new Promise(r => setTimeout(r, 50));
+    return catalogData;
+  }
+  catalogLoading = true;
+  try {
+    const mod = await import('./data/catalog.js');
+    // catalog is array of [name, grape, country, colour, [vector]]
+    catalogData = mod.catalog;
+    console.log(`Catalog loaded: ${catalogData.length} wines`);
+  } catch (e) {
+    console.warn('Failed to load catalog:', e);
+    catalogData = [];
+  }
+  catalogLoading = false;
+  return catalogData;
+}
+
+function fuzzyMatchLocal(query) {
+  return fuzzyMatchInList(query, uniqueWines, w => w.name || '', w => w.brand || '');
+}
+
+function fuzzyMatchCatalog(query, catalog) {
+  // Catalog entries are arrays: [name, grape, country, colour, [vector]]
+  const result = fuzzyMatchInList(query, catalog, e => e[0], () => '');
+  if (!result) return null;
+  // Convert to wine-like object for display
+  return {
+    name: result[0],
+    grape: result[1] || '',
+    country: result[2] || '',
+    colour: result[3] || '',
+    vector: result[4],
+    _fromCatalog: true,
+  };
+}
+
+function fuzzyMatchInList(query, list, getName, getBrand) {
   const q = query.toLowerCase().trim();
   const qTokens = q.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
   if (qTokens.length === 0) return null;
 
   let bestScore = 0;
-  let bestWine = null;
+  let bestItem = null;
 
-  for (const w of uniqueWines) {
-    const name = (w.name || '').toLowerCase();
-    // Exact substring
-    if (name.includes(q)) return w;
+  for (const item of list) {
+    const name = getName(item).toLowerCase();
+    // Exact substring match — strong signal
+    if (name.includes(q)) {
+      // Prefer shorter names (more specific match)
+      const specificity = q.length / name.length;
+      if (specificity > bestScore || !bestItem) {
+        bestScore = Math.max(specificity, 0.8);
+        bestItem = item;
+      }
+      continue;
+    }
     // Token overlap
     const nTokens = name.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
     const overlap = qTokens.filter(t => nTokens.some(n => n.includes(t) || t.includes(n))).length;
     const score = overlap / Math.max(qTokens.length, 1);
-    // Also check brand
-    const brand = (w.brand || '').toLowerCase();
+    const brand = getBrand(item).toLowerCase();
     const brandBoost = brand && q.includes(brand) ? 0.3 : 0;
     const total = score + brandBoost;
     if (total > bestScore) {
       bestScore = total;
-      bestWine = w;
+      bestItem = item;
     }
   }
 
-  return bestScore >= 0.5 ? bestWine : null;
+  return bestScore >= 0.5 ? bestItem : null;
 }
 
 function applyModifiers(vector, modifierText) {
@@ -961,19 +1029,39 @@ function applyModifiers(vector, modifierText) {
   return v;
 }
 
-function detectSimilarQuery(query) {
+function parseSimilarQuery(query) {
   for (const re of SIMILAR_PATTERNS) {
     const m = query.match(re);
     if (m) {
-      const wineName = m[1].trim();
-      const modifiers = m[2] ? m[2].trim() : null;
-      const wine = fuzzyMatchWineName(wineName);
-      if (wine && wine.vector) {
-        const vec = applyModifiers([...wine.vector], modifiers);
-        return { wine, vector: vec, name: wine.name, modifiers };
-      }
+      return { wineName: m[1].trim(), modifiers: m[2] ? m[2].trim() : null };
     }
   }
+  return null;
+}
+
+async function detectSimilarQuery(query) {
+  const parsed = parseSimilarQuery(query);
+  if (!parsed) return null;
+
+  const { wineName, modifiers } = parsed;
+
+  // 1. Try local inventory first (instant)
+  const localMatch = fuzzyMatchLocal(wineName);
+  if (localMatch && localMatch.vector) {
+    const vec = applyModifiers([...localMatch.vector], modifiers);
+    return { wine: localMatch, vector: vec, name: localMatch.name, modifiers };
+  }
+
+  // 2. Search full catalog (lazy-load 142K wines)
+  const catalog = await loadCatalog();
+  if (catalog && catalog.length > 0) {
+    const catMatch = fuzzyMatchCatalog(wineName, catalog);
+    if (catMatch && catMatch.vector) {
+      const vec = applyModifiers([...catMatch.vector], modifiers);
+      return { wine: catMatch, vector: vec, name: catMatch.name, modifiers };
+    }
+  }
+
   return null;
 }
 
@@ -1016,7 +1104,10 @@ function similarReason(refVec, wineVec) {
 }
 
 // ── Search logic ──
-function runSearch() {
+let searchSeq = 0; // Prevent stale async results from overwriting newer searches
+
+async function runSearch() {
+  const seq = ++searchSeq;
   const query = searchInput.value.trim();
   let pool = uniqueWines;
 
@@ -1051,21 +1142,30 @@ function runSearch() {
     return;
   }
 
-  // Check for "similar to" natural language
-  const similarDetected = detectSimilarQuery(query);
-  if (similarDetected) {
-    const refKey = normalizeKey(similarDetected.name);
-    currentTarget = similarDetected.vector;
-    currentResults = pool
-      .filter(w => normalizeKey(w.name) !== refKey)
-      .map(w => {
-        const vec = w.vector || [0.5,0.5,0.5,0.5,0.5,0.5,0.5];
-        const sim = similarity(similarDetected.vector, vec);
-        return { ...w, score: sim, matchPct: Math.round(sim * 100), reason: similarReason(similarDetected.vector, vec) };
-      });
-    currentResults.sort((a, b) => b.score - a.score);
-    renderResults(currentResults, similarDetected.vector, similarDetected);
-    return;
+  // Check for "similar to" natural language (may trigger async catalog load)
+  if (parseSimilarQuery(query)) {
+    // Show loading state if catalog hasn't loaded yet
+    if (!catalogData) {
+      document.getElementById('results').innerHTML =
+        '<div class="catalog-loading"><span>Searching 142,000 wines\u2026</span></div>';
+      document.getElementById('resultsCount').textContent = '';
+    }
+    const similarDetected = await detectSimilarQuery(query);
+    if (seq !== searchSeq) return; // Stale — user typed something else
+    if (similarDetected) {
+      const refKey = normalizeKey(similarDetected.name);
+      currentTarget = similarDetected.vector;
+      currentResults = pool
+        .filter(w => normalizeKey(w.name) !== refKey)
+        .map(w => {
+          const vec = w.vector || [0.5,0.5,0.5,0.5,0.5,0.5,0.5];
+          const sim = similarity(similarDetected.vector, vec);
+          return { ...w, score: sim, matchPct: Math.round(sim * 100), reason: similarReason(similarDetected.vector, vec) };
+        });
+      currentResults.sort((a, b) => b.score - a.score);
+      renderResults(currentResults, similarDetected.vector, similarDetected);
+      return;
+    }
   }
 
   const { target, filters } = parsePrompt(query);
@@ -1168,12 +1268,15 @@ function renderResults(results, target, similarRef) {
     if (ref.grape) refMeta.push(capitalize(ref.grape));
     if (ref.region) refMeta.push(ref.region);
     if (ref.country && ref.country !== ref.region) refMeta.push(ref.country);
+    if (ref.colour) refMeta.push(ref.colour);
+    const isFromCatalog = ref._fromCatalog;
+    const localNote = isFromCatalog ? ' <span style="opacity:0.5;font-style:italic">\u2014 not sold locally</span>' : '';
 
     html += `
     <div class="similar-header">
       <div class="similar-label">Similar to</div>
       <div class="similar-ref-name">${esc(ref.name)}</div>
-      <div class="similar-ref-meta">${refMeta.join(' / ')}${ref.price ? ` \u2014 $${ref.price.toFixed(2)}` : ''}</div>
+      <div class="similar-ref-meta">${refMeta.join(' / ')}${ref.price ? ` \u2014 $${ref.price.toFixed(2)}` : ''}${localNote}</div>
       ${renderVectorChart(similarRef.vector)}
       <button class="similar-clear" onclick="window._clearSimilar()">Clear &times;</button>
     </div>`;
