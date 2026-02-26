@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>wine.ai — Find Your Perfect Wine</title>
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5f5f0;
+  --header-bg: #1a1a2e;
+  --accent: #722F37;
+  --accent-light: #8B3A42;
+  --accent-glow: rgba(114,47,55,0.15);
+  --card-bg: #ffffff;
+  --text: #1a1a1a;
+  --text-secondary: #6b6b6b;
+  --text-muted: #999;
+  --border: #e8e8e3;
+  --green: #2d6a4f;
+  --chip-bg: #f0ece4;
+  --chip-active: var(--accent);
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+header {
+  background: var(--header-bg);
+  padding: 1.25rem 1rem 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-inner {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.brand h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.brand h1 span { color: var(--accent-light); }
+
+.brand .subtitle {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.45);
+  font-weight: 400;
+}
+
+/* ── Search ── */
+.search-wrap {
+  position: relative;
+}
+
+.search-wrap svg {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+#search {
+  width: 100%;
+  padding: 0.8rem 2.75rem 0.8rem 2.75rem;
+  font-size: 0.95rem;
+  border: 2px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+#search::placeholder { color: rgba(255,255,255,0.35); }
+#search:focus {
+  border-color: var(--accent-light);
+  background: rgba(255,255,255,0.12);
+}
+
+.search-clear {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.4);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: none;
+  padding: 0.25rem;
+  line-height: 1;
+}
+
+.search-clear.visible { display: block; }
+
+/* ── Filters ── */
+.filters {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: 672px;
+  margin: 0 auto;
+}
+.filters::-webkit-scrollbar { display: none; }
+
+.chip {
+  flex-shrink: 0;
+  padding: 0.4rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: var(--chip-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.chip:hover { background: #e8e4dc; }
+.chip.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* ── Main ── */
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0.75rem 1rem 3rem;
+}
+
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.75rem;
+  padding: 0 0.125rem;
+}
+
+.results-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.sort-btn {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+
+/* ── Wine Cards ── */
+.wine-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 0.625rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  transition: box-shadow 0.15s;
+}
+
+.wine-card:hover { box-shadow: var(--shadow-lg); }
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.card-info { flex: 1; min-width: 0; }
+
+.wine-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 0.25rem;
+  color: var(--text);
+}
+
+.wine-meta {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.wine-meta span { white-space: nowrap; }
+.meta-sep { margin: 0 0.3rem; opacity: 0.4; }
+
+.match-badge {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  border: 2px solid var(--accent);
+}
+
+.match-pct {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.match-label {
+  font-size: 0.55rem;
+  color: var(--accent-light);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.card-tags {
+  display: flex;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.tag {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: var(--chip-bg);
+  color: var(--text-secondary);
+}
+
+.tag.price {
+  background: #e8f5e9;
+  color: var(--green);
+  font-weight: 600;
+}
+
+.tag.store { background: #e8eaf6; color: #3949ab; }
+.tag.also { background: transparent; color: var(--text-muted); font-style: italic; }
+
+.card-reason {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+.card-notes {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-top: 0.5rem;
+  display: none;
+}
+
+.card-notes.open { display: block; }
+
+.notes-toggle {
+  font-size: 0.72rem;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-top: 0.35rem;
+  padding: 0;
+  font-weight: 500;
+}
+
+/* ── Empty / Loading states ── */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+}
+
+.empty-state h2 {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.example-queries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1.25rem;
+}
+
+.example-chip {
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  background: var(--chip-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.example-chip:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* ── Placeholder cycling ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── Responsive ── */
+@media (min-width: 640px) {
+  header { padding: 1.5rem 1.5rem 1.25rem; }
+  main { padding: 1rem 1.5rem 3rem; }
+  .wine-card { padding: 1.25rem; }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d0d0c8; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <h1>wine<span>.ai</span></h1>
+      <span class="subtitle" id="subtitle">371 wines &middot; 3 stores nearby</span>
+    </div>
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="search" placeholder="smooth red, berry notes, not too dry" autocomplete="off" />
+      <button class="search-clear" id="clearBtn">&times;</button>
+    </div>
+  </div>
+</header>
+
+<div class="filters" id="filters">
+  <button class="chip" data-filter="colour:Red">Red</button>
+  <button class="chip" data-filter="colour:White">White</button>
+  <button class="chip" data-filter="colour:Rose">Rose</button>
+  <button class="chip" data-filter="subtype:sparkling">Sparkling</button>
+  <button class="chip" data-filter="price:15">Under $15</button>
+  <button class="chip" data-filter="price:25">Under $25</button>
+  <button class="chip" data-filter="price:50">Under $50</button>
+</div>
+
+<main id="main">
+  <div class="results-header">
+    <span class="results-count" id="resultsCount"></span>
+    <button class="sort-btn" id="sortBtn">Best match</button>
+  </div>
+  <div id="results"></div>
+</main>
+
+<script type="module">
+import { stores } from './data/inventory.js';
+import { parsePrompt, similarity, matchReason, distanceMiles, DIMENSIONS } from './data/lexicon.js';
+
+// ── Config ──
+const USER_LAT = 43.1587;
+const USER_LNG = -76.3327;
+
+// ── Preprocess data ──
+// Build a unified wine list with store info attached
+const allWines = [];
+const wineByKey = new Map(); // key = normalized name → cheapest entry
+
+for (const store of stores) {
+  const dist = distanceMiles(USER_LAT, USER_LNG, store.lat, store.lng);
+  for (const wine of store.wines) {
+    allWines.push({
+      ...wine,
+      storeId: store.id,
+      storeName: store.name,
+      storeAddress: store.address,
+      storeDist: Math.round(dist * 10) / 10,
+    });
+  }
+}
+
+// Group same wine across stores (by normalized name)
+function normalizeKey(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+const wineGroups = new Map();
+for (const w of allWines) {
+  const key = normalizeKey(w.name);
+  if (!wineGroups.has(key)) {
+    wineGroups.set(key, []);
+  }
+  wineGroups.get(key).push(w);
+}
+
+// For each group, sort by price (cheapest first)
+for (const [key, group] of wineGroups) {
+  group.sort((a, b) => (a.price || 999) - (b.price || 999));
+}
+
+// Deduplicated list: one entry per unique wine, cheapest first
+const uniqueWines = [];
+const seen = new Set();
+for (const w of allWines) {
+  const key = normalizeKey(w.name);
+  if (!seen.has(key)) {
+    seen.add(key);
+    uniqueWines.push(w);
+  }
+}
+
+// Total count
+const totalWines = uniqueWines.length;
+const totalAll = allWines.length;
+
+document.getElementById('subtitle').textContent =
+  `${totalAll} wines \u00B7 ${stores.length} stores nearby`;
+
+// ── State ──
+let activeFilters = new Set();
+let sortMode = 'match'; // 'match' | 'price' | 'name'
+let currentResults = [];
+let currentTarget = null;
+
+// ── Placeholder cycling ──
+const placeholders = [
+  'smooth red, berry notes, not too dry',
+  'crisp white for seafood',
+  'bold cabernet under $30',
+  'fruity Italian red',
+  'easy-drinking pinot noir',
+  'dry rosé, refreshing',
+  'spicy shiraz from Australia',
+  'buttery chardonnay',
+  'sweet moscato under $15',
+  'full-bodied malbec',
+];
+
+let phIdx = 0;
+const searchInput = document.getElementById('search');
+const clearBtn = document.getElementById('clearBtn');
+
+setInterval(() => {
+  if (document.activeElement !== searchInput && !searchInput.value) {
+    phIdx = (phIdx + 1) % placeholders.length;
+    searchInput.placeholder = placeholders[phIdx];
+  }
+}, 3000);
+
+// ── Search + Filters ──
+let debounceTimer = null;
+
+searchInput.addEventListener('input', () => {
+  clearBtn.classList.toggle('visible', searchInput.value.length > 0);
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(runSearch, 200);
+});
+
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    clearTimeout(debounceTimer);
+    runSearch();
+  }
+});
+
+clearBtn.addEventListener('click', () => {
+  searchInput.value = '';
+  clearBtn.classList.remove('visible');
+  runSearch();
+  searchInput.focus();
+});
+
+// Filter chips
+document.getElementById('filters').addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  const f = chip.dataset.filter;
+  if (activeFilters.has(f)) {
+    activeFilters.delete(f);
+    chip.classList.remove('active');
+  } else {
+    // Deactivate same-type filters
+    const type = f.split(':')[0];
+    for (const af of [...activeFilters]) {
+      if (af.startsWith(type + ':')) {
+        activeFilters.delete(af);
+        document.querySelector(`[data-filter="${af}"]`)?.classList.remove('active');
+      }
+    }
+    activeFilters.add(f);
+    chip.classList.add('active');
+  }
+  runSearch();
+});
+
+// Sort button
+const sortBtn = document.getElementById('sortBtn');
+const sortModes = ['match', 'price', 'name'];
+const sortLabels = { match: 'Best match', price: 'Price: low', name: 'A to Z' };
+
+sortBtn.addEventListener('click', () => {
+  const idx = sortModes.indexOf(sortMode);
+  sortMode = sortModes[(idx + 1) % sortModes.length];
+  sortBtn.textContent = sortLabels[sortMode];
+  renderResults(currentResults, currentTarget);
+});
+
+// ── Example chips ──
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('example-chip')) {
+    searchInput.value = e.target.textContent;
+    clearBtn.classList.add('visible');
+    runSearch();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+});
+
+// ── Main search logic ──
+function runSearch() {
+  const query = searchInput.value.trim();
+
+  // Apply filters
+  let pool = uniqueWines;
+
+  for (const f of activeFilters) {
+    const [type, val] = f.split(':');
+    if (type === 'colour') {
+      pool = pool.filter(w => (w.colour || '').toLowerCase() === val.toLowerCase());
+    } else if (type === 'subtype') {
+      pool = pool.filter(w => (w.subtype || '').toLowerCase() === val.toLowerCase());
+    } else if (type === 'price') {
+      const max = parseFloat(val);
+      pool = pool.filter(w => w.price && w.price <= max);
+    }
+  }
+
+  if (!query) {
+    // No search — show popular/rated wines or all
+    currentTarget = null;
+    currentResults = pool.map(w => ({
+      ...w,
+      score: defaultScore(w),
+      matchPct: null,
+      reason: '',
+    }));
+    currentResults.sort((a, b) => b.score - a.score);
+    renderResults(currentResults, null);
+    return;
+  }
+
+  // Parse prompt
+  const { target, filters } = parsePrompt(query);
+  currentTarget = target;
+
+  // Apply parsed filters
+  if (filters.colour) {
+    pool = pool.filter(w => (w.colour || '').toLowerCase() === filters.colour.toLowerCase());
+  }
+  if (filters.grape) {
+    pool = pool.filter(w => (w.grape || '').toLowerCase().includes(filters.grape));
+  }
+  if (filters.country) {
+    pool = pool.filter(w => (w.country || '').toLowerCase().includes(filters.country.toLowerCase()));
+  }
+  if (filters.region) {
+    pool = pool.filter(w => (w.region || '').toLowerCase().includes(filters.region.toLowerCase()));
+  }
+  if (filters.priceMax) {
+    pool = pool.filter(w => !w.price || w.price <= filters.priceMax);
+  }
+  if (filters.priceMin) {
+    pool = pool.filter(w => !w.price || w.price >= filters.priceMin);
+  }
+
+  // Score each wine
+  currentResults = pool.map(w => {
+    const vec = w.vector || [0.5,0.5,0.5,0.5,0.5,0.5,0.5];
+    const sim = similarity(target, vec);
+    const pct = Math.round(sim * 100);
+    const reason = matchReason(target, vec);
+    return { ...w, score: sim, matchPct: pct, reason };
+  });
+
+  currentResults.sort((a, b) => b.score - a.score);
+  renderResults(currentResults, target);
+}
+
+function defaultScore(w) {
+  let score = 0;
+  // Prefer wines with ratings
+  if (w.rating && w.rating > 0) score += w.rating * 0.1;
+  if (w.rating_count && w.rating_count > 0) score += Math.min(w.rating_count / 100, 0.3);
+  // Prefer matched wines
+  if (w.match_type === 'exact') score += 0.3;
+  else if (w.match_type === 'fuzzy') score += 0.2;
+  // Prefer wines with descriptions
+  if (w.description && w.description.length > 50) score += 0.1;
+  // Small random-ish spread based on name hash
+  let hash = 0;
+  for (let i = 0; i < (w.name || '').length; i++) hash = ((hash << 5) - hash + w.name.charCodeAt(i)) | 0;
+  score += (Math.abs(hash) % 100) / 1000;
+  return score;
+}
+
+// ── Render ──
+function renderResults(results, target) {
+  const container = document.getElementById('results');
+  const countEl = document.getElementById('resultsCount');
+
+  // Sort according to mode
+  let sorted = [...results];
+  if (sortMode === 'price') {
+    sorted.sort((a, b) => (a.price || 999) - (b.price || 999));
+  } else if (sortMode === 'name') {
+    sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }
+  // For 'match', already sorted by score
+
+  // Limit display
+  const display = sorted.slice(0, 50);
+
+  countEl.textContent = `${results.length} result${results.length !== 1 ? 's' : ''}`;
+
+  if (results.length === 0 && searchInput.value.trim()) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <h2>No wines match that search</h2>
+        <p>Try different terms or remove some filters</p>
+      </div>`;
+    return;
+  }
+
+  if (results.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <h2>Describe the wine you're looking for</h2>
+        <p>Search by taste, grape, price, or style</p>
+        <div class="example-queries">
+          <span class="example-chip">smooth red under $20</span>
+          <span class="example-chip">crisp white for seafood</span>
+          <span class="example-chip">bold cabernet</span>
+          <span class="example-chip">fruity pinot noir</span>
+          <span class="example-chip">dry rosé</span>
+          <span class="example-chip">sweet moscato</span>
+          <span class="example-chip">spicy shiraz</span>
+          <span class="example-chip">buttery chardonnay</span>
+        </div>
+      </div>`;
+    countEl.textContent = '';
+    return;
+  }
+
+  let html = '';
+  for (const w of display) {
+    const key = normalizeKey(w.name);
+    const group = wineGroups.get(key) || [w];
+    const cheapest = group[0];
+    const otherStores = group.filter(g => g.storeId !== cheapest.storeId);
+
+    // Use cheapest for display if this is the canonical entry
+    const wine = (w.storeId === cheapest.storeId) ? w : w;
+
+    // Grape + region line
+    const metaParts = [];
+    if (wine.grape) metaParts.push(capitalize(wine.grape));
+    if (wine.region) metaParts.push(wine.region);
+    if (wine.country && wine.country !== wine.region) metaParts.push(wine.country);
+
+    // Description (truncate)
+    let desc = wine.description || '';
+    // Filter out generic CityHive descriptions
+    if (desc.startsWith('Get ') && desc.includes(' from ')) desc = '';
+    const hasNotes = desc.length > 20;
+
+    // Match badge
+    const showMatch = wine.matchPct !== null && wine.matchPct !== undefined;
+
+    // Also at other stores
+    const alsoAt = otherStores.map(o =>
+      `${o.storeName.replace("'s Liquors", "'s").replace(" Discount Liquors", "'s")}` +
+      (o.price ? ` $${o.price.toFixed(2)}` : '')
+    );
+
+    html += `
+    <div class="wine-card">
+      <div class="card-top">
+        <div class="card-info">
+          <div class="wine-name">${esc(wine.name)}</div>
+          <div class="wine-meta">
+            ${metaParts.map(p => `<span>${esc(p)}</span>`).join('<span class="meta-sep">&middot;</span>')}
+          </div>
+        </div>
+        ${showMatch ? `
+        <div class="match-badge">
+          <span class="match-pct">${wine.matchPct}</span>
+          <span class="match-label">match</span>
+        </div>` : ''}
+      </div>
+      <div class="card-tags">
+        ${wine.price ? `<span class="tag price">$${wine.price.toFixed(2)}</span>` : ''}
+        <span class="tag store">${shortStore(wine.storeName)} &middot; ${wine.storeDist} mi</span>
+        ${wine.colour ? `<span class="tag">${wine.colour}</span>` : ''}
+        ${wine.subtype && wine.subtype !== wine.colour?.toLowerCase() ? `<span class="tag">${capitalize(wine.subtype)}</span>` : ''}
+        ${alsoAt.length > 0 ? alsoAt.map(s => `<span class="tag also">Also at ${esc(s)}</span>`).join('') : ''}
+      </div>
+      ${showMatch && wine.reason ? `<div class="card-reason">${esc(wine.reason)}</div>` : ''}
+      ${hasNotes ? `
+        <button class="notes-toggle" onclick="this.nextElementSibling.classList.toggle('open'); this.textContent = this.nextElementSibling.classList.contains('open') ? 'Hide tasting notes' : 'Tasting notes';">Tasting notes</button>
+        <div class="card-notes">${esc(desc)}</div>
+      ` : ''}
+    </div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+
+function shortStore(name) {
+  return name
+    .replace("'s Liquors", "'s")
+    .replace(" Discount Liquors", "'s")
+    .replace("Liquor Express", "Liq. Express");
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+// ── Init ──
+runSearch();
+</script>
+
+</body>
+</html>
